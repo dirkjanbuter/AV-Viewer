@@ -22,7 +22,7 @@ SDL_AudioSpec _audiospec;
 float _sample[2048];
 int aframecount = 0;
 
-double vframe = 1.0/_fps;
+double vframe = 0;
 double aframe = (1.0/44100.0)*1024.0; // 0.02322
 double aelapsed = 0.0;
 int framecount=0;
@@ -102,9 +102,10 @@ int main(int argc, char* argv[])
 	if(argc > 4)
 	{
 		_fps = (float)atoi(argv[4]);
-		vframe = 1.0/_fps;
+		
 	}
 
+	vframe = 1.0/_fps;
 
 	if(filter_create(&_filter, argv[1], _fps) == CFAILED)
 	{
