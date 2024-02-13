@@ -14,7 +14,8 @@ int _width = WIDTH;
 int _height = HEIGHT;
 float _fps = FPS;
 SDL_Renderer *_renderer;
-FILTER _filter;
+FILTER _filter[16];
+int _filterNum = 0;
 u_int8_t *_backbuffer;
 SDL_Surface *_backsurface;
 SDL_AudioDeviceID _audiodevice;
@@ -38,10 +39,14 @@ double currenttime() {
 
 void AudioCallback(void *userdata, uint8_t * stream, int len)
 {
+	int i;
+
 	SDL_zero(_sample);
 	
-	filter_audio(&_filter, _sample, framecount, aelapsed);
-	
+	for(i = 0; i < _filterNum; i++)
+	{
+		filter_audio(&_filter[i], _sample, framecount, aelapsed);
+	}
 	for(int i = 0; i < 2048; i++) 
 		((float*)stream)[i] = i%2 ? _sample[i/2] : _sample[1024+i/2];
 	aelapsed += aframe;
@@ -49,16 +54,18 @@ void AudioCallback(void *userdata, uint8_t * stream, int len)
 
 
 
-CRESULT video(int64_t framecount)
+CRESULT video(char* argv[], int64_t framecount)
 {
 	SDL_Texture *screentexture;
-	int x, y;
+	int x, y, i;
 
 	SDL_RenderClear(_renderer);
 
-	if(filter_video(&_filter, _backsurface->pixels, _width, _height, 0xffffffff, "Avcaster 1.0 | (c) Dirk Jan Buter, https://www.dirkjanbuter.com/", framecount) == CFAILED)
-		return CFAILED;
-	
+	for(i = 0; i < _filterNum; i++)
+	{
+		if(filter_video(&_filter[i], _backsurface->pixels, _width, _height, 0xffffffff, argv[5+(i*2)], framecount) == CFAILED)
+			return CFAILED;
+	}
 	screentexture = SDL_CreateTextureFromSurface(_renderer, _backsurface);
 	SDL_RenderCopy(_renderer, screentexture, NULL, NULL);
 	SDL_DestroyTexture(screentexture);
@@ -83,34 +90,27 @@ int main(int argc, char* argv[])
 	Uint32 rmask, gmask, bmask, amask;
 	int numAudioDrivers, i;
 	
-	if(argc < 3)
+	if(argc < 6)
 	{
-		printf("Usage: %s filter.so [WIDTH] [HEIGHT] [FPS]\r\n", argv[0]);
+		printf("Usage: %s [WIDTH] [HEIGHT] [FPS] [filter1.so] [ARGUMENT1] [filter2.so] [ARGUMENT2]...\r\n", argv[0]);
 		return 1;
 	}
 	
-	if(argc > 2)
-	{
-		_width = atoi(argv[2]);
-	}
-	
-	if(argc > 3)
-	{
-		_height = atoi(argv[3]);
-	}
-	
-	if(argc > 4)
-	{
-		_fps = (float)atoi(argv[4]);
-		
-	}
+	_width = atoi(argv[1]);
+	_height = atoi(argv[2]);
+	_fps = (float)atoi(argv[3]);
 
 	vframe = 1.0/_fps;
 
-	if(filter_create(&_filter, argv[1], _fps) == CFAILED)
+	_filterNum = (argc-4)/2;
+
+	for(i = 0; i < _filterNum; i++)
 	{
-		printf("Error: opening filter failed\r\n");
-		return 1;
+		if(filter_create(&_filter[i], argv[4+(i*2)], _fps) == CFAILED)
+		{
+			printf("Error: opening filter failed\r\n");
+			return 1;
+		}
 	}
 	_backbuffer = (Uint8*)malloc(_width * _height * 4);
 
@@ -120,7 +120,7 @@ int main(int argc, char* argv[])
 		return 1;
 	}
 
-	window = SDL_CreateWindow( "AV-Viewer 1.0 | GPL-3.0, Dirk Jan Buter, https://www.dirkjanbuter.com/", SDL_WINDOWPOS_UNDEFINED, SDL_WINDOWPOS_UNDEFINED, _width, _height, SDL_WINDOW_SHOWN);
+	window = SDL_CreateWindow( "AV-Viewer 1.0 | GPL-3.0, Dirk Jan Buter, https://dirkjanbuter.com/", SDL_WINDOWPOS_UNDEFINED, SDL_WINDOWPOS_UNDEFINED, _width, _height, SDL_WINDOW_SHOWN);
 	if(!window)
 	{
 		printf("Error creating window: %s\r\n", SDL_GetError());
@@ -165,7 +165,7 @@ int main(int argc, char* argv[])
 		
 	
 	now = currenttime();
-	if(video(framecount++) == CFAILED)
+	if(video(argv, framecount++) == CFAILED)
 		return 1;
 	velapsed += vframe;
 	
@@ -197,7 +197,7 @@ int main(int argc, char* argv[])
 		 	if(velapsed <= aelapsed)
 			{		
 				if(
-				video(framecount++) == CFAILED)
+				video(argv, framecount++) == CFAILED)
 					break;
 				velapsed += vframe;
 			}
@@ -214,7 +214,10 @@ int main(int argc, char* argv[])
 	SDL_FreeSurface(_backsurface);
 	SDL_Quit();
 
-	filter_destroy(&_filter);
+	for(i = 0; i < _filterNum; i++)
+	{
+		filter_destroy(&_filter[i]);
+	}
 	free(_backbuffer);
 	
 	return 0;
