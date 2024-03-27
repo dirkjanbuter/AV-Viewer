@@ -15,6 +15,7 @@ int _height = HEIGHT;
 float _fps = FPS;
 SDL_Renderer *_renderer;
 FILTER _filter[16];
+int _colors[16];
 int _filterNum = 0;
 u_int8_t *_backbuffer;
 SDL_Surface *_backsurface;
@@ -63,7 +64,7 @@ CRESULT video(char* argv[], int64_t framecount)
 
 	for(i = 0; i < _filterNum; i++)
 	{
-		if(filter_video(&_filter[i], _backsurface->pixels, _width, _height, 0xffffffff, argv[5+(i*2)], framecount) == CFAILED)
+		if(filter_video(&_filter[i], _backsurface->pixels, _width, _height, _colors[i], argv[6+(i*3)], framecount) == CFAILED)
 			return CFAILED;
 	}
 	screentexture = SDL_CreateTextureFromSurface(_renderer, _backsurface);
@@ -92,7 +93,7 @@ int main(int argc, char* argv[])
 	
 	if(argc < 6)
 	{
-		printf("Usage: %s [WIDTH] [HEIGHT] [FPS] [filter1.so] [ARGUMENT1] [filter2.so] [ARGUMENT2]...\r\n", argv[0]);
+		printf("Usage: %s [WIDTH] [HEIGHT] [FPS] [filter1.so] [COLOR1] [ARGUMENT1] [filter2.so] [COLOR2] [ARGUMENT2]...\r\n", argv[0]);
 		return 1;
 	}
 	
@@ -102,11 +103,12 @@ int main(int argc, char* argv[])
 
 	vframe = 1.0/_fps;
 
-	_filterNum = (argc-4)/2;
+	_filterNum = (argc-4)/3;
 
 	for(i = 0; i < _filterNum; i++)
 	{
-		if(filter_create(&_filter[i], argv[4+(i*2)], _fps) == CFAILED)
+		_colors[i] = (int)strtol(argv[5+(i*3)], NULL, 16);
+		if(filter_create(&_filter[i], argv[4+(i*3)], _fps) == CFAILED)
 		{
 			printf("Error: opening filter failed\r\n");
 			return 1;
