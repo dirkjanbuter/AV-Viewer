@@ -218,6 +218,7 @@ int main(int argc, char* argv[])
 		return 1;
 	velapsed += vframe;
 	
+	// Sound
 	SDL_zero(_aspec);
 	_aspec.freq = 44100;
 	_aspec.silence = 0;
@@ -228,8 +229,7 @@ int main(int argc, char* argv[])
 	_adevice = SDL_OpenAudioDevice(NULL, 0, &_aspec, NULL, 0);
 	SDL_PauseAudioDevice(_adevice, 0);
 	
-	
-	
+	// Mic
 	SDL_zero(_mspec);
 	_mspec.freq = 44100;
 	_mspec.silence = 0;
@@ -242,22 +242,32 @@ int main(int argc, char* argv[])
 
         if(1)
         {
-		while(!keypress)
+		while(!quit)
 		{
 			while(SDL_PollEvent(&event))
 			{
+		      		if(event.type == SDL_KEYDOWN)
+		      		{
+		      		      for(i = 0; i < _filterNum; i++)
+	                              {
+		                            if(filter_video(&_filter[i], event.key.keysym.scancode) == CFAILED)
+			                    {
+			                          quit = 1;
+			                    }
+	                              }
+		      		}
+		      		   		
 		      		switch(event.type)
 		      		{
-			 		 case SDL_QUIT:
-			     			 keypress = 1;
-			     			 break;
+			 	      case SDL_QUIT:
+			     	            quit = 1;
+			     		    break;
 		      		}
 		 	}
 		 	
 		 	if(velapsed <= aelapsed)
 			{		
-				if(
-				video(argv, framecount++) == CFAILED)
+				if(video(argv, framecount++) == CFAILED)
 					break;
 				velapsed += vframe;
 			}
