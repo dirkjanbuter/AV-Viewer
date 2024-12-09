@@ -121,7 +121,7 @@ CRESULT filter_key(FILTER *v, int64_t key)
 {
     if(!v->filterkey)
     	return CFAILED;	
-    if((*v->filterkey)(frame, key) == 0)
+    if((*v->filterkey)(key) == 0)
         return CFAILED;
     return CSUCCESS;
 }

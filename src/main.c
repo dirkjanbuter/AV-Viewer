@@ -108,7 +108,7 @@ int main(int argc, char* argv[])
 {
 	SDL_Window* window = NULL;
 	SDL_Event event;
-	int keypress = 0;
+	int quit = 0;
 	
 	double velapsed = 0.0;
 	double xelapsed = 0.0;
@@ -250,7 +250,7 @@ int main(int argc, char* argv[])
 		      		{
 		      		      for(i = 0; i < _filterNum; i++)
 	                              {
-		                            if(filter_video(&_filter[i], event.key.keysym.scancode) == CFAILED)
+		                            if(filter_key(&_filter[i], (int64_t)event.key.keysym.scancode) == CFAILED)
 			                    {
 			                          quit = 1;
 			                    }
