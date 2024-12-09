@@ -240,37 +240,33 @@ int main(int argc, char* argv[])
 	_mdevice = SDL_OpenAudioDevice(SDL_GetAudioDeviceName(mindex, SDL_TRUE), SDL_TRUE, &_mspec, &_receivedaudiospec, SDL_AUDIO_ALLOW_FORMAT_CHANGE);
 	SDL_PauseAudioDevice(_mdevice, SDL_FALSE);
 
-        if(1)
-        {
-		while(!quit)
+        while(!quit)
+	{
+		while(SDL_PollEvent(&event))
 		{
-			while(SDL_PollEvent(&event))
-			{
-		      		if(event.type == SDL_KEYDOWN)
-		      		{
-		      		      for(i = 0; i < _filterNum; i++)
-	                              {
-		                            if(filter_key(&_filter[i], (int64_t)event.key.keysym.scancode) == CFAILED)
-			                    {
-			                          quit = 1;
-			                    }
-	                              }
-		      		}
-		      		   		
-		      		switch(event.type)
-		      		{
-			 	      case SDL_QUIT:
-			     	            quit = 1;
-			     		    break;
-		      		}
-		 	}
-		 	
-		 	if(velapsed <= aelapsed)
-			{		
-				if(video(argv, framecount++) == CFAILED)
-					break;
-				velapsed += vframe;
-			}
+	      		switch(event.type)
+	      		{
+		 	      case SDL_KEYDOWN:
+		 	      {
+	        		      for(i = 0; i < _filterNum; i++)
+                                      {
+            	                              if(filter_key(&_filter[i], (int64_t)event.key.keysym.scancode) == CFAILED)
+          		                      {
+          		                            quit = 1;
+        		                      }
+                                      }
+		 	      } break;
+		 	      case SDL_QUIT:
+		     	            quit = 1;
+		     		    break;
+	      		}
+	 	}
+	 	
+	 	if(velapsed <= aelapsed)
+		{		
+			if(video(argv, framecount++) == CFAILED)
+				break;
+			velapsed += vframe;
 		}
 	}
 	

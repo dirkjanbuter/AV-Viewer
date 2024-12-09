@@ -65,6 +65,7 @@ CRESULT filter_create(FILTER *v, char *filename, int fps)
     v->filterdestroy = dlsym(v->handle, "filterdestroy");
     v->filteraudio = dlsym(v->handle, "filteraudio");
     v->filtermic = dlsym(v->handle, "filtermic");
+    v->filterkey = dlsym(v->handle, "filterkey");
 
 
     v->filtervideo = dlsym(v->handle, "filtervideo");
@@ -102,7 +103,7 @@ CRESULT filter_video(FILTER *v, u_int8_t *buffer, int w, int h, unsigned int col
 CRESULT filter_audio(FILTER *v, float *frame, int64_t framecount, float elapsed)
 {
     if(!v->filteraudio)
-    	return CFAILED;	
+    	return CSUCCESS;	
     if((*v->filteraudio)(frame, framecount, elapsed) == 0)
         return CFAILED;
     return CSUCCESS;
@@ -111,7 +112,7 @@ CRESULT filter_audio(FILTER *v, float *frame, int64_t framecount, float elapsed)
 CRESULT filter_mic(FILTER *v, float *frame, int64_t framecount, float elapsed)
 {
     if(!v->filtermic)
-    	return CFAILED;	
+    	return CSUCCESS;	
     if((*v->filtermic)(frame, framecount, elapsed) == 0)
         return CFAILED;
     return CSUCCESS;
@@ -120,7 +121,7 @@ CRESULT filter_mic(FILTER *v, float *frame, int64_t framecount, float elapsed)
 CRESULT filter_key(FILTER *v, int64_t key)
 {
     if(!v->filterkey)
-    	return CFAILED;	
+    	return CSUCCESS;	
     if((*v->filterkey)(key) == 0)
         return CFAILED;
     return CSUCCESS;
