@@ -13,6 +13,7 @@ CRESULT filter_create(FILTER *v, char *filename, int fps)
     v->filterdestroy = (FILTER_FUN_DESTROY)GetProcAddress(v->handle, "filterdestroy");
     v->filtervideo = (FILTER_FUN_VIDEO)GetProcAddress(v->handle, "filtervideo");
     v->filteraudio = (FILTER_FUN_AUDIO)GetProcAddress(v->handle, "filteraudio");
+    v->filtermic = (FILTER_FUN_AUDIO)GetProcAddress(v->handle, "filtermic");
 
     if(!v->filtervideo)	
 	    v->filtervideo = (FILTER_FUN_VIDEO)GetProcAddress(v->handle, "filterstep");
@@ -63,6 +64,7 @@ CRESULT filter_create(FILTER *v, char *filename, int fps)
     v->filtercreate = dlsym(v->handle, "filtercreate");
     v->filterdestroy = dlsym(v->handle, "filterdestroy");
     v->filteraudio = dlsym(v->handle, "filteraudio");
+    v->filtermic = dlsym(v->handle, "filtermic");
 
 
     v->filtervideo = dlsym(v->handle, "filtervideo");
@@ -106,6 +108,14 @@ CRESULT filter_audio(FILTER *v, float *frame, int64_t framecount, float elapsed)
     return CSUCCESS;
 }
 
+CRESULT filter_mic(FILTER *v, float *frame, int64_t framecount, float elapsed)
+{
+    if(!v->filtermic)
+    	return CFAILED;	
+    if((*v->filtermic)(frame, framecount, elapsed) == 0)
+        return CFAILED;
+    return CSUCCESS;
+}
 
 #endif
 

@@ -1,4 +1,4 @@
-CC = gcc
+CC = gcc -g 
 SRCS = main.c log.c filter.c
 FILES = $(addprefix src/, $(SRCS))
 OBJS = $(FILES:.c=.o)

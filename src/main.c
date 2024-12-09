@@ -19,10 +19,15 @@ int _colors[16];
 int _filterNum = 0;
 u_int8_t *_backbuffer;
 SDL_Surface *_backsurface;
-SDL_AudioDeviceID _audiodevice;
-SDL_AudioSpec _audiospec;
-float _sample[2048];
+SDL_AudioDeviceID _adevice;
+SDL_AudioDeviceID _mdevice;
+SDL_AudioSpec _aspec;
+SDL_AudioSpec _mspec;
+SDL_AudioSpec _receivedaudiospec;
+float _asample[2048];
+float _msample[2048];
 int aframecount = 0;
+int _recordingdevicecount = 0;
 
 double vframe = 0;
 double aframe = (1.0/44100.0)*1024.0; // 0.02322
@@ -38,22 +43,44 @@ double currenttime() {
     return seconds;
 }
 
-void AudioCallback(void *userdata, uint8_t * stream, int len)
+void acallback(void *userdata, uint8_t * stream, int len)
 {
 	int i;
 
-	SDL_zero(_sample);
+	SDL_zero(_asample);
 	
 	for(i = 0; i < _filterNum; i++)
 	{
-		filter_audio(&_filter[i], _sample, framecount, aelapsed);
+		filter_audio(&_filter[i], _asample, framecount, aelapsed);
 	}
 	for(int i = 0; i < 2048; i++) 
-		((float*)stream)[i] = i%2 ? _sample[i/2] : _sample[1024+i/2];
+		((float*)stream)[i] = i%2 ? _asample[i/2] : _asample[1024+i/2];
 	aelapsed += aframe;
 }
 
+void mcallback(void *userdata, uint8_t * stream, int len)
+{
+	int i;
 
+	SDL_zero(_msample);
+	
+	for(int i = 0; i < 2048; i++) 
+	{
+		if(i%2)
+		{
+			_msample[i/2] = ((float*)stream)[i];
+		}
+		else
+		{
+			_msample[1024+i/2] = ((float*)stream)[i];
+		}
+	}	
+	for(i = 0; i < _filterNum; i++)
+	{
+		filter_mic(&_filter[i], _msample, framecount, aelapsed);
+	}
+        aelapsed += aframe;
+}
 
 CRESULT video(char* argv[], int64_t framecount)
 {
@@ -90,6 +117,7 @@ int main(int argc, char* argv[])
 	double now, lasttime;
 	Uint32 rmask, gmask, bmask, amask;
 	int numAudioDrivers, i;
+	int mindex;
 	
 	if(argc < 6)
 	{
@@ -122,7 +150,25 @@ int main(int argc, char* argv[])
 		return 1;
 	}
 
-	window = SDL_CreateWindow( "AV-Viewer 1.0 | GPL-3.0, Dirk Jan Buter, https://dirkjanbuter.com/", SDL_WINDOWPOS_UNDEFINED, SDL_WINDOWPOS_UNDEFINED, _width, _height, SDL_WINDOW_SHOWN);
+        _recordingdevicecount = SDL_GetNumAudioDevices(SDL_TRUE);
+
+	if(_recordingdevicecount < 1)
+	{
+		printf( "Unable to get audio capture device! SDL Error: %s\n", SDL_GetError() );
+		return 0;
+	}
+
+	for(int i = 0; i < _recordingdevicecount; ++i)
+	{
+		const char* deviceName = SDL_GetAudioDeviceName(i, SDL_TRUE);
+		printf("%d - %s\n", i, deviceName);
+	}
+
+        printf("Choose audio: \n");
+	scanf("%d", &mindex);
+
+
+	window = SDL_CreateWindow( "AV-Viewer 1.0 | AGPL-3.0, Dirk Jan Buter, https://dirkjanbuter.com/", SDL_WINDOWPOS_UNDEFINED, SDL_WINDOWPOS_UNDEFINED, _width, _height, SDL_WINDOW_SHOWN);
 	if(!window)
 	{
 		printf("Error creating window: %s\r\n", SDL_GetError());
@@ -160,7 +206,8 @@ int main(int argc, char* argv[])
 
 	mlock(_backsurface->pixels, _backsurface->pitch * _backsurface->h);
 	mlock(_backbuffer, _width * _height * 4);
-	mlock(_sample, sizeof(_sample));
+	mlock(_asample, sizeof(_asample));
+	mlock(_msample, sizeof(_msample));
 
 	vgoal = 0.0;
 	agoal = 0.0;
@@ -171,17 +218,28 @@ int main(int argc, char* argv[])
 		return 1;
 	velapsed += vframe;
 	
-	SDL_zero(_audiospec);
-	_audiospec.freq = 44100;
-	_audiospec.silence = 0;
-	_audiospec.format = AUDIO_F32;
-	_audiospec.channels = 2;
-	_audiospec.samples = 1024;
-	_audiospec.callback = AudioCallback;
-	_audiodevice = SDL_OpenAudioDevice(NULL, 0, &_audiospec, NULL, 0);
+	SDL_zero(_aspec);
+	_aspec.freq = 44100;
+	_aspec.silence = 0;
+	_aspec.format = AUDIO_F32;
+	_aspec.channels = 2;
+	_aspec.samples = 1024;
+	_aspec.callback = acallback;
+	_adevice = SDL_OpenAudioDevice(NULL, 0, &_aspec, NULL, 0);
+	SDL_PauseAudioDevice(_adevice, 0);
 	
-	SDL_PauseAudioDevice(_audiodevice, 0);
 	
+	
+	SDL_zero(_mspec);
+	_mspec.freq = 44100;
+	_mspec.silence = 0;
+	_mspec.format = AUDIO_F32;
+	_mspec.channels = 2;
+	_mspec.samples = 1024;
+	_mspec.callback = mcallback;
+	_mdevice = SDL_OpenAudioDevice(SDL_GetAudioDeviceName(mindex, SDL_TRUE), SDL_TRUE, &_mspec, &_receivedaudiospec, SDL_AUDIO_ALLOW_FORMAT_CHANGE);
+	SDL_PauseAudioDevice(_mdevice, SDL_FALSE);
+
         if(1)
         {
 		while(!keypress)
@@ -206,11 +264,13 @@ int main(int argc, char* argv[])
 		}
 	}
 	
-	munlock(_sample, sizeof(_sample));
+	munlock(_msample, sizeof(_msample));
+	munlock(_asample, sizeof(_asample));
 	munlock(_backbuffer, _width * _height * 4);
 	munlock(_backsurface->pixels, _backsurface->pitch * _backsurface->h);
 
-    	SDL_CloseAudioDevice(_audiodevice);
+    	SDL_CloseAudioDevice(_mdevice);
+    	SDL_CloseAudioDevice(_adevice);
 
 
 	SDL_FreeSurface(_backsurface);
