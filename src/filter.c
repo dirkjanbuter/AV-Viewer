@@ -117,6 +117,15 @@ CRESULT filter_mic(FILTER *v, float *frame, int64_t framecount, float elapsed)
     return CSUCCESS;
 }
 
+CRESULT filter_key(FILTER *v, int64_t key)
+{
+    if(!v->filterkey)
+    	return CFAILED;	
+    if((*v->filterkey)(frame, key) == 0)
+        return CFAILED;
+    return CSUCCESS;
+}
+
 #endif
 
 
